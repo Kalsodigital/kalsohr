@@ -1,0 +1,1225 @@
+// KalsoHR Prisma Schema - Multi-Tenant HR Management System
+// Database: MySQL 8+
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// CORE TABLES (Platform Level)
+// ============================================
+
+model SubscriptionPlan {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique @db.VarChar(100)
+  code        String  @unique @db.VarChar(50)
+  description String? @db.Text
+
+  // Pricing
+  priceMonthly Decimal? @db.Decimal(10, 2)
+  priceYearly  Decimal? @db.Decimal(10, 2)
+  currency     String   @default("INR") @db.VarChar(3)
+
+  // Limits
+  maxUsers     Int?
+  maxEmployees Int?
+  maxStorageMb Int?
+
+  // Features (JSON array of feature codes) - DEPRECATED: Use planModules relation
+  features Json?
+
+  isActive     Boolean @default(true)
+  displayOrder Int     @default(0)
+
+  // Audit fields
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+  creator   User?    @relation("PlanCreator", fields: [createdBy], references: [id])
+  updater   User?    @relation("PlanUpdater", fields: [updatedBy], references: [id])
+
+  organizations Organization[]
+  planModules   PlanModule[]
+
+  @@map("subscription_plans")
+}
+
+model Organization {
+  id   Int     @id @default(autoincrement())
+  name String  @db.VarChar(255)
+  slug String  @unique @db.VarChar(100)
+  code String  @unique @db.VarChar(50)
+  logo String? @db.VarChar(255)
+
+  // Organization Classification
+  organizationTypeId Int?
+  organizationType   OrganizationType? @relation(fields: [organizationTypeId], references: [id])
+  industryTypeId     Int?
+  industryType       IndustryType?     @relation(fields: [industryTypeId], references: [id])
+  businessCategoryId Int?
+  businessCategory   BusinessCategory? @relation(fields: [businessCategoryId], references: [id])
+
+  // Contact Information
+  email   String? @db.VarChar(255)
+  phone   String? @db.VarChar(20)
+  address String? @db.Text
+
+  // Location Relations
+  countryId  Int?
+  country    Country? @relation(fields: [countryId], references: [id])
+  stateId    Int?
+  state      State?   @relation(fields: [stateId], references: [id])
+  cityId     Int?
+  city       City?    @relation(fields: [cityId], references: [id])
+  postalCode String?  @db.VarChar(20)
+
+  // Subscription
+  subscriptionPlanId     Int
+  subscriptionPlan       SubscriptionPlan @relation(fields: [subscriptionPlanId], references: [id])
+  subscriptionTenure     String?          @db.VarChar(20) // 'monthly' or 'yearly'
+  subscriptionStartDate  DateTime?
+  subscriptionExpiryDate DateTime?
+  isTrial                Boolean          @default(false)
+  trialEndsAt            DateTime?
+
+  // Limits
+  maxUsers     Int @default(10)
+  maxEmployees Int @default(50)
+  maxStorageMb Int @default(1000)
+
+  // Status
+  isActive Boolean @default(true)
+  status   String  @default("active") @db.VarChar(20) // active, suspended, cancelled
+
+  // Theme Customization
+  themePrimaryColor   String? @db.VarChar(7) // Hex color code (e.g., #3B82F6)
+  themeSecondaryColor String? @db.VarChar(7)
+  themeAccentColor    String? @db.VarChar(7)
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  // Relations
+  users                   User[]
+  roles                   Role[]
+  organizationModules     OrganizationModule[]
+  departments             Department[]
+  designations            Designation[]
+  employmentTypes         EmploymentType[]
+  branches                Branch[]
+  employees               Employee[]
+  attendance              Attendance[]
+  leaveTypes              LeaveType[]
+  leaveBalances           LeaveBalance[]
+  leaveRequests           LeaveRequest[]
+  organizationalPositions OrganizationalPosition[]
+  holidays                Holiday[]
+  jobPositions            JobPosition[]
+  candidates              Candidate[]
+  applications            Application[]
+  interviewSchedules      InterviewSchedule[]
+  auditLogs               AuditLog[]
+
+  @@index([slug])
+  @@index([isActive, status])
+  @@map("organizations")
+}
+
+// Platform Modules (SuperAdmin only - for platform management)
+model PlatformModule {
+  id           Int     @id @default(autoincrement())
+  name         String  @db.VarChar(100)
+  code         String  @unique @db.VarChar(50)
+  description  String? @db.Text
+  icon         String? @db.VarChar(50)
+  displayOrder Int     @default(0)
+  isActive     Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  @@map("platform_modules")
+}
+
+// Org Modules (Tenant organization modules)
+model OrgModule {
+  id           Int     @id @default(autoincrement())
+  name         String  @db.VarChar(100)
+  code         String  @unique @db.VarChar(50)
+  description  String? @db.Text
+  icon         String? @db.VarChar(50)
+  isCore       Boolean @default(false) // Core modules always included in all plans
+  displayOrder Int     @default(0)
+  isActive     Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  // Relations
+  planModules         PlanModule[]
+  organizationModules OrganizationModule[]
+  rolePermissions     RolePermission[]
+
+  @@map("org_modules")
+}
+
+// Plan-Module Junction (which modules are included in each subscription plan)
+model PlanModule {
+  id                 Int              @id @default(autoincrement())
+  subscriptionPlanId Int
+  subscriptionPlan   SubscriptionPlan @relation(fields: [subscriptionPlanId], references: [id], onDelete: Cascade)
+  orgModuleId        Int
+  orgModule          OrgModule        @relation(fields: [orgModuleId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  @@unique([subscriptionPlanId, orgModuleId])
+  @@index([subscriptionPlanId])
+  @@map("plan_modules")
+}
+
+// Organization-Module Junction (which modules are enabled for each org)
+model OrganizationModule {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  orgModuleId    Int
+  orgModule      OrgModule    @relation(fields: [orgModuleId], references: [id], onDelete: Cascade)
+
+  isEnabled  Boolean   @default(true)
+  enabledAt  DateTime  @default(now())
+  disabledAt DateTime?
+
+  @@unique([organizationId, orgModuleId])
+  @@index([organizationId, isEnabled])
+  @@map("organization_modules")
+}
+
+// ============================================
+// PLATFORM MASTERS (Common across all orgs)
+// ============================================
+
+model Country {
+  id        Int    @id @default(autoincrement())
+  name      String @db.VarChar(100)
+  code      String @unique @db.VarChar(3) // ISO 3166-1 alpha-3 (IND, USA)
+  iso2      String @unique @db.VarChar(2) // ISO 3166-1 alpha-2 (IN, US)
+  phoneCode String @db.VarChar(10) // +91, +1, etc.
+
+  isActive     Boolean @default(true)
+  displayOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  states        State[]
+  organizations Organization[]
+
+  @@map("countries")
+}
+
+model State {
+  id        Int     @id @default(autoincrement())
+  countryId Int
+  country   Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+  name String @db.VarChar(100)
+  code String @db.VarChar(10) // MH, KA, DL, etc.
+  type String @db.VarChar(20) // "State" or "Union Territory"
+
+  isActive     Boolean @default(true)
+  displayOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  cities        City[]
+  organizations Organization[]
+
+  @@unique([countryId, code])
+  @@index([countryId])
+  @@map("states")
+}
+
+model City {
+  id      Int   @id @default(autoincrement())
+  stateId Int
+  state   State @relation(fields: [stateId], references: [id], onDelete: Cascade)
+
+  name String @db.VarChar(100)
+  code String @db.VarChar(20)
+  type String @db.VarChar(20) // "City", "District", "Town"
+
+  isActive     Boolean @default(true)
+  displayOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  employees     Employee[]
+  organizations Organization[]
+
+  @@unique([stateId, code])
+  @@index([stateId])
+  @@map("cities")
+}
+
+model BloodGroup {
+  id   Int    @id @default(autoincrement())
+  name String @unique @db.VarChar(10) // "A+", "O-", etc.
+  code String @unique @db.VarChar(10)
+
+  isActive     Boolean @default(true)
+  displayOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  employees Employee[]
+
+  @@map("blood_groups")
+}
+
+model Gender {
+  id   Int    @id @default(autoincrement())
+  name String @unique @db.VarChar(50)
+  code String @unique @db.VarChar(20)
+
+  isActive     Boolean @default(true)
+  displayOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  employees Employee[]
+
+  @@map("genders")
+}
+
+model MaritalStatus {
+  id   Int    @id @default(autoincrement())
+  name String @unique @db.VarChar(50)
+  code String @unique @db.VarChar(20)
+
+  isActive     Boolean @default(true)
+  displayOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  employees Employee[]
+
+  @@map("marital_statuses")
+}
+
+model Religion {
+  id   Int    @id @default(autoincrement())
+  name String @unique @db.VarChar(100)
+  code String @unique @db.VarChar(50)
+
+  isActive     Boolean @default(true)
+  displayOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  employees Employee[]
+
+  @@map("religions")
+}
+
+model EducationLevel {
+  id    Int    @id @default(autoincrement())
+  name  String @unique @db.VarChar(100)
+  code  String @unique @db.VarChar(50)
+  level Int // Numeric rank: 0 = Below 10th, 10 = PhD
+
+  isActive     Boolean @default(true)
+  displayOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  employees Employee[]
+
+  @@map("education_levels")
+}
+
+model DocumentType {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique @db.VarChar(100)
+  code        String  @unique @db.VarChar(50)
+  category    String  @db.VarChar(50) // Identity, Education, Employment, Financial
+  isMandatory Boolean @default(false)
+
+  isActive     Boolean @default(true)
+  displayOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  documents EmployeeDocument[]
+
+  @@map("document_types")
+}
+
+model OrganizationType {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique @db.VarChar(100) // Company, Partnership, LLP, Sole Proprietor, Non-Profit, Trust
+  code        String  @unique @db.VarChar(50)
+  description String? @db.Text
+
+  isActive     Boolean @default(true)
+  displayOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  organizations Organization[]
+
+  @@map("organization_types")
+}
+
+model IndustryType {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique @db.VarChar(100) // Pharmacy, Textiles, IT Services, Manufacturing, Healthcare
+  code        String  @unique @db.VarChar(50)
+  description String? @db.Text
+  icon        String? @db.VarChar(50)
+
+  isActive     Boolean @default(true)
+  displayOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  organizations Organization[]
+
+  @@map("industry_types")
+}
+
+model BusinessCategory {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique @db.VarChar(100) // SME, Enterprise, Startup, Government, Public Sector
+  code        String  @unique @db.VarChar(50)
+  description String? @db.Text
+
+  isActive     Boolean @default(true)
+  displayOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  organizations Organization[]
+
+  @@map("business_categories")
+}
+
+// ============================================
+// AUTHENTICATION & AUTHORIZATION
+// ============================================
+
+model User {
+  id             Int           @id @default(autoincrement())
+  organizationId Int?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  roleId Int?
+  role   Role? @relation(fields: [roleId], references: [id])
+
+  // Credentials
+  email        String @unique @db.VarChar(255)
+  passwordHash String @db.VarChar(255)
+
+  // Profile
+  firstName String? @db.VarChar(100)
+  lastName  String? @db.VarChar(100)
+  phone     String? @db.VarChar(20)
+  avatar    String? @db.VarChar(255)
+
+  // Flags
+  isSuperAdmin  Boolean @default(false)
+  isActive      Boolean @default(true)
+  emailVerified Boolean @default(false)
+
+  // Security
+  lastLoginAt         DateTime?
+  passwordChangedAt   DateTime?
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  // Relations
+  employee              Employee?
+  interviewsScheduled   InterviewSchedule[]
+  leaveRequestsApproved LeaveRequest[]
+  auditLogs             AuditLog[]
+  plansCreated          SubscriptionPlan[]  @relation("PlanCreator")
+  plansUpdated          SubscriptionPlan[]  @relation("PlanUpdater")
+
+  @@index([organizationId, email])
+  @@index([isActive])
+  @@map("users")
+}
+
+model Role {
+  id             Int           @id @default(autoincrement())
+  organizationId Int?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name        String  @db.VarChar(100)
+  code        String? @db.VarChar(50)
+  description String? @db.Text
+
+  // System role (cannot be deleted)
+  isSystem Boolean @default(false)
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  users       User[]
+  permissions RolePermission[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId, isActive])
+  @@map("roles")
+}
+
+model RolePermission {
+  id     Int  @id @default(autoincrement())
+  roleId Int
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  // Module reference - supports both old (moduleCode) and new (orgModuleId) approaches
+  moduleCode  String     @db.VarChar(50) // Keep for backwards compatibility
+  orgModuleId Int?
+  orgModule   OrgModule? @relation(fields: [orgModuleId], references: [id])
+
+  // CRUD permissions
+  canRead   Boolean @default(false)
+  canWrite  Boolean @default(false)
+  canUpdate Boolean @default(false)
+  canDelete Boolean @default(false)
+
+  // Additional permissions
+  canApprove Boolean @default(false)
+  canExport  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  @@unique([roleId, moduleCode])
+  @@index([orgModuleId])
+  @@map("role_permissions")
+}
+
+// ============================================
+// MASTER DATA (Organization-specific)
+// ============================================
+
+model Department {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name           String    @db.VarChar(100)
+  code           String?   @db.VarChar(50)
+  description    String?   @db.Text
+  headEmployeeId Int?
+  headEmployee   Employee? @relation("DepartmentHead", fields: [headEmployeeId], references: [id], onDelete: SetNull)
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  employees               Employee[]
+  jobPositions            JobPosition[]
+  organizationalPositions OrganizationalPosition[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@map("departments")
+}
+
+model Designation {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name        String  @db.VarChar(100)
+  code        String? @db.VarChar(50)
+  description String? @db.Text
+  level       Int?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  employees               Employee[]
+  organizationalPositions OrganizationalPosition[]
+
+  @@index([organizationId])
+  @@map("designations")
+}
+
+model EmploymentType {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name        String  @db.VarChar(100)
+  code        String? @db.VarChar(50)
+  description String? @db.Text
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  employees Employee[]
+
+  @@index([organizationId])
+  @@map("employment_types")
+}
+
+model Branch {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name String  @db.VarChar(255)
+  code String? @db.VarChar(50)
+
+  // Address
+  address    String? @db.Text
+  city       String? @db.VarChar(100)
+  state      String? @db.VarChar(100)
+  postalCode String? @db.VarChar(20)
+  country    String  @default("India") @db.VarChar(100)
+
+  // Contact
+  phone String? @db.VarChar(20)
+  email String? @db.VarChar(255)
+
+  // Manager
+  managerId Int?
+  manager   Employee? @relation("BranchManager", fields: [managerId], references: [id], onDelete: SetNull)
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  employees  Employee[]
+  attendance Attendance[]
+
+  @@index([organizationId])
+  @@map("branches")
+}
+
+// ============================================
+// EMPLOYEE MANAGEMENT
+// ============================================
+
+model Employee {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  userId Int?  @unique
+  user   User? @relation(fields: [userId], references: [id])
+
+  // Employee ID
+  employeeCode String @db.VarChar(50)
+
+  // Personal Information (from Bawa app)
+  firstName   String    @db.VarChar(100)
+  middleName  String?   @db.VarChar(100)
+  lastName    String?   @db.VarChar(100)
+  dateOfBirth DateTime?
+  gender      String?   @db.VarChar(20) // @deprecated - use genderId
+
+  // Master Data Relations
+  genderId     Int?
+  genderMaster Gender? @relation(fields: [genderId], references: [id])
+
+  // Contact
+  email          String? @db.VarChar(255)
+  phone          String? @db.VarChar(20)
+  alternatePhone String? @db.VarChar(20)
+
+  // Address
+  currentAddress   String? @db.Text
+  permanentAddress String? @db.Text
+  city             String? @db.VarChar(100) // @deprecated - use cityId
+  state            String? @db.VarChar(100)
+  postalCode       String? @db.VarChar(20)
+
+  cityId     Int?
+  cityMaster City? @relation(fields: [cityId], references: [id])
+
+  // Employment Details
+  departmentId     Int?
+  department       Department?     @relation(fields: [departmentId], references: [id])
+  designationId    Int?
+  designation      Designation?    @relation(fields: [designationId], references: [id])
+  employmentTypeId Int?
+  employmentType   EmploymentType? @relation(fields: [employmentTypeId], references: [id])
+  branchId         Int?
+  branch           Branch?         @relation(fields: [branchId], references: [id])
+
+  dateOfJoining DateTime?
+  dateOfLeaving DateTime?
+
+  // Salary
+  salary Decimal? @db.Decimal(10, 2)
+
+  // Documents
+  profilePicture String? @db.VarChar(255)
+  aadharNumber   String? @db.VarChar(12)
+  panNumber      String? @db.VarChar(10)
+  idProof        String? @db.VarChar(255)
+
+  // Education (from Bawa app)
+  educationLevel String? @db.VarChar(100) // @deprecated - use educationLevelId
+  degrees        String? @db.Text
+
+  educationLevelId     Int?
+  educationLevelMaster EducationLevel? @relation(fields: [educationLevelId], references: [id])
+
+  // Additional fields from Bawa app
+  bloodGroup String? @db.VarChar(10) // @deprecated - use bloodGroupId
+  religion   String? @db.VarChar(100) // @deprecated - use religionId
+  community  String? @db.VarChar(100)
+
+  bloodGroupId     Int?
+  bloodGroupMaster BloodGroup? @relation(fields: [bloodGroupId], references: [id])
+
+  religionId     Int?
+  religionMaster Religion? @relation(fields: [religionId], references: [id])
+
+  maritalStatusId     Int?
+  maritalStatusMaster MaritalStatus? @relation(fields: [maritalStatusId], references: [id])
+
+  // Family Information - Father (from Bawa app)
+  fatherName       String? @db.VarChar(100)
+  fatherOccupation String? @db.VarChar(100)
+  fatherContact    String? @db.VarChar(20)
+  fatherStatus     String? @db.VarChar(50)
+
+  // Family Information - Mother (from Bawa app)
+  motherName       String? @db.VarChar(100)
+  motherOccupation String? @db.VarChar(100)
+  motherContact    String? @db.VarChar(20)
+  motherStatus     String? @db.VarChar(50)
+
+  // Family Address
+  familyAddress String? @db.Text
+
+  // Emergency Contact
+  emergencyContactName  String? @db.VarChar(100)
+  emergencyContactPhone String? @db.VarChar(20)
+
+  // Bank Details
+  bankAccountNumber String? @db.VarChar(20)
+  bankIfscCode      String? @db.VarChar(11)
+  uanNumber         String? @db.VarChar(12)
+
+  // Status
+  status   String  @default("Active") @db.VarChar(20) // Active, On Leave, Terminated, Resigned
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  // Relations
+  siblings                 EmployeeSibling[]
+  documents                EmployeeDocument[]
+  attendance               Attendance[]
+  leaveBalances            LeaveBalance[]
+  leaveRequests            LeaveRequest[]
+  managedBranches          Branch[]                @relation("BranchManager")
+  managedDepartments       Department[]            @relation("DepartmentHead")
+  organizationalPosition   OrganizationalPosition? @relation(fields: [organizationalPositionId], references: [id])
+  organizationalPositionId Int?
+
+  @@unique([organizationId, employeeCode])
+  @@index([organizationId])
+  @@index([organizationId, status, isActive])
+  @@map("employees")
+}
+
+model EmployeeSibling {
+  id             Int      @id @default(autoincrement())
+  organizationId Int
+  employeeId     Int
+  employee       Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  name               String    @db.VarChar(100)
+  dateOfBirth        DateTime?
+  gender             String?   @db.VarChar(20)
+  occupation         String?   @db.VarChar(100)
+  maritalStatus      String?   @db.VarChar(50)
+  contact            String?   @db.VarChar(20)
+  status             String?   @db.VarChar(50)
+  isEmergencyContact Boolean   @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  @@index([employeeId])
+  @@map("employee_siblings")
+}
+
+model EmployeeDocument {
+  id             Int      @id @default(autoincrement())
+  organizationId Int
+  employeeId     Int
+  employee       Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  documentType       String        @db.VarChar(50) // @deprecated - use documentTypeId
+  documentTypeId     Int?
+  documentTypeMaster DocumentType? @relation(fields: [documentTypeId], references: [id])
+
+  documentName String  @db.VarChar(255)
+  filePath     String  @db.VarChar(255)
+  fileSize     Int?
+  mimeType     String? @db.VarChar(100)
+
+  uploadedAt DateTime @default(now())
+  uploadedBy Int?
+
+  @@index([organizationId, employeeId])
+  @@map("employee_documents")
+}
+
+// ============================================
+// ATTENDANCE MANAGEMENT
+// ============================================
+
+model Attendance {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  employeeId Int
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  branchId Int?
+  branch   Branch? @relation(fields: [branchId], references: [id])
+
+  attendanceDate DateTime @db.Date
+
+  status String @db.VarChar(20) // Present, Absent, Half Day, Leave, Holiday
+
+  checkInTime  DateTime?
+  checkOutTime DateTime?
+
+  workHours     Decimal? @db.Decimal(4, 2)
+  overtimeHours Decimal? @db.Decimal(4, 2)
+
+  notes         String? @db.Text
+  absenceReason String? @db.Text
+
+  markedBy Int?
+  markedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  @@unique([organizationId, employeeId, attendanceDate])
+  @@index([organizationId, attendanceDate])
+  @@index([employeeId, attendanceDate])
+  @@map("attendance")
+}
+
+// ============================================
+// LEAVE MANAGEMENT
+// ============================================
+
+model LeaveType {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name        String  @db.VarChar(100)
+  code        String? @db.VarChar(50)
+  description String? @db.Text
+
+  daysPerYear        Int     @default(0)
+  isPaid             Boolean @default(true)
+  requiresApproval   Boolean @default(true)
+  maxConsecutiveDays Int?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  leaveBalances LeaveBalance[]
+  leaveRequests LeaveRequest[]
+
+  @@index([organizationId])
+  @@map("leave_types")
+}
+
+model LeaveBalance {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  employeeId Int
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  leaveTypeId Int
+  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id])
+
+  year          Int
+  totalDays     Decimal @default(0) @db.Decimal(5, 2)
+  usedDays      Decimal @default(0) @db.Decimal(5, 2)
+  remainingDays Decimal @default(0) @db.Decimal(5, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  @@unique([employeeId, leaveTypeId, year])
+  @@index([organizationId, employeeId])
+  @@map("leave_balances")
+}
+
+model LeaveRequest {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  employeeId Int
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  leaveTypeId Int
+  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id])
+
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  totalDays Decimal  @db.Decimal(5, 2)
+
+  reason String? @db.Text
+  status String  @default("Pending") @db.VarChar(20) // Pending, Approved, Rejected, Cancelled
+
+  approvedBy      Int?
+  approver        User?     @relation(fields: [approvedBy], references: [id])
+  approvedAt      DateTime?
+  rejectionReason String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  @@index([organizationId, employeeId])
+  @@index([organizationId, status])
+  @@index([startDate, endDate])
+  @@map("leave_requests")
+}
+
+// ============================================
+// ORGANIZATIONAL STRUCTURE
+// ============================================
+
+model OrganizationalPosition {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  title       String  @db.VarChar(255)
+  code        String? @db.VarChar(50)
+  description String? @db.Text
+
+  departmentId  Int
+  department    Department  @relation(fields: [departmentId], references: [id])
+  designationId Int
+  designation   Designation @relation(fields: [designationId], references: [id])
+
+  reportingPositionId  Int?
+  reportingPosition    OrganizationalPosition?  @relation("PositionHierarchy", fields: [reportingPositionId], references: [id], onDelete: SetNull)
+  subordinatePositions OrganizationalPosition[] @relation("PositionHierarchy")
+
+  headCount Int     @default(1)
+  isActive  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  employees Employee[]
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, departmentId, designationId, title])
+  @@index([organizationId])
+  @@index([departmentId])
+  @@index([designationId])
+  @@map("organizational_positions")
+}
+
+model Holiday {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  date        DateTime @db.Date
+  name        String   @db.VarChar(255)
+  description String?  @db.Text
+
+  type       String  @db.VarChar(50) // "National", "Religious", "Company", "Regional"
+  isOptional Boolean @default(false)
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  @@unique([organizationId, date])
+  @@index([organizationId, date])
+  @@index([organizationId, type])
+  @@map("holidays")
+}
+
+// ============================================
+// RECRUITMENT MODULE (Optional)
+// ============================================
+
+model JobPosition {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  departmentId Int?
+  department   Department? @relation(fields: [departmentId], references: [id])
+
+  title       String  @db.VarChar(255)
+  code        String? @db.VarChar(50)
+  description String? @db.Text
+
+  requiredSkills         String? @db.Text
+  requiredQualifications String? @db.Text
+  minExperience          Int     @default(0)
+  maxExperience          Int?
+
+  vacancies Int    @default(1)
+  priority  String @default("Medium") @db.VarChar(20) // High, Medium, Low
+  status    String @default("Open") @db.VarChar(20) // Open, On Hold, Filled, Closed
+
+  postedDate  DateTime?
+  closingDate DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  applications Application[]
+
+  @@index([organizationId, status])
+  @@map("job_positions")
+}
+
+model Candidate {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  firstName String  @db.VarChar(100)
+  lastName  String? @db.VarChar(100)
+  email     String  @db.VarChar(255)
+  phone     String? @db.VarChar(20)
+
+  resumePath     String? @db.VarChar(255)
+  profilePicture String? @db.VarChar(255)
+
+  totalExperience Int?
+  currentCompany  String?  @db.VarChar(255)
+  currentSalary   Decimal? @db.Decimal(10, 2)
+  expectedSalary  Decimal? @db.Decimal(10, 2)
+  noticePeriod    Int?
+
+  skills         String? @db.Text
+  qualifications String? @db.Text
+
+  source String? @db.VarChar(100)
+  status String  @default("New") @db.VarChar(20) // New, In Process, Selected, Rejected, On Hold
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  applications Application[]
+
+  @@index([organizationId, status])
+  @@map("candidates")
+}
+
+model Application {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  candidateId Int
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  jobPositionId Int
+  jobPosition   JobPosition @relation(fields: [jobPositionId], references: [id], onDelete: Cascade)
+
+  appliedDate DateTime @db.Date
+  status      String   @default("Applied") @db.VarChar(20) // Applied, Shortlisted, Interview Scheduled, Selected, Rejected
+
+  notes String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  interviewSchedules InterviewSchedule[]
+
+  @@unique([candidateId, jobPositionId])
+  @@index([organizationId, status])
+  @@map("applications")
+}
+
+model InterviewSchedule {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  applicationId Int
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  roundName     String?  @db.VarChar(100)
+  interviewDate DateTime
+  interviewMode String   @default("In-person") @db.VarChar(20) // In-person, Video, Phone
+
+  interviewerId Int?
+  interviewer   User? @relation(fields: [interviewerId], references: [id])
+
+  location    String? @db.VarChar(255)
+  meetingLink String? @db.VarChar(500)
+
+  status String @default("Scheduled") @db.VarChar(20) // Scheduled, Completed, Cancelled, Rescheduled
+
+  feedback String? @db.Text
+  rating   Int?
+  result   String? @db.VarChar(20) // Pass, Fail, On Hold
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  @@index([organizationId, interviewDate])
+  @@index([interviewerId, interviewDate])
+  @@map("interview_schedules")
+}
+
+// ============================================
+// AUDIT & SYSTEM TABLES
+// ============================================
+
+model AuditLog {
+  id             BigInt        @id @default(autoincrement())
+  organizationId Int?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  userId Int?
+  user   User? @relation(fields: [userId], references: [id])
+
+  action     String @db.VarChar(50)
+  entityType String @db.VarChar(100)
+  entityId   Int?
+
+  oldValues Json?
+  newValues Json?
+
+  ipAddress String? @db.VarChar(45)
+  userAgent String? @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId, entityType, entityId])
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
