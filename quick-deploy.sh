@@ -26,7 +26,9 @@ fi
 
 echo -e "${YELLOW}Step 1/10: Updating system...${NC}"
 dnf update -y > /dev/null 2>&1
-dnf install -y git curl wget vim nano htop > /dev/null 2>&1
+dnf install -y git curl wget vim nano > /dev/null 2>&1
+# Try to install htop, but don't fail if not available
+dnf install -y htop > /dev/null 2>&1 || echo -e "${BLUE}(htop not available, skipping)${NC}"
 echo -e "${GREEN}✓ System updated${NC}"
 
 echo -e "${YELLOW}Step 2/10: Configuring firewall...${NC}"
