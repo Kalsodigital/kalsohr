@@ -487,8 +487,8 @@ export default function EmployeeProfilePage() {
                       <Calendar className="w-4 h-4 text-green-600" />
                     </div>
                   </div>
-                  <p className="text-3xl font-bold text-green-600 mb-1">{employee._count?.leaveBalances || 0}</p>
-                  <p className="text-xs text-gray-500">Days remaining</p>
+                  <p className="text-3xl font-bold text-green-600 mb-1">{employee._count?.leaveRequests || 0}</p>
+                  <p className="text-xs text-gray-500">Leave requests</p>
                 </div>
               </CardContent>
             </Card>
@@ -545,8 +545,8 @@ export default function EmployeeProfilePage() {
           <Card className="border-0 shadow-md">
             <CardHeader>
               <CardTitle className="text-lg font-bold flex items-center gap-2">
-                <div className="bg-indigo-100 p-2 rounded-lg">
-                  <Activity className="w-5 h-5 text-indigo-600" />
+                <div className="bg-blue-100 p-2 rounded-lg">
+                  <Activity className="w-5 h-5 text-blue-600" />
                 </div>
                 Recent Activity
               </CardTitle>

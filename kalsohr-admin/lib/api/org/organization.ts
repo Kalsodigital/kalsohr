@@ -3,6 +3,7 @@ import { ApiResponse } from '@/lib/types/api';
 import {
   OrganizationProfileData,
   UpdateOrganizationProfileData,
+  UpdateOrganizationSettingsData,
   Organization,
 } from '@/lib/types/organization';
 
@@ -66,6 +67,29 @@ export const updateOrganizationProfile = async (
 
     if (!response.data.success) {
       throw new Error(response.data.message || 'Failed to update organization profile');
+    }
+
+    return response.data.data;
+  } catch (error) {
+    throw new Error(handleApiError(error));
+  }
+};
+
+/**
+ * Update organization settings (timezone, etc.)
+ */
+export const updateOrganizationSettings = async (
+  orgSlug: string,
+  data: UpdateOrganizationSettingsData
+): Promise<Organization> => {
+  try {
+    const response = await apiClient.put<ApiResponse<Organization>>(
+      `/api/v1/${orgSlug}/organization/settings`,
+      data
+    );
+
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to update organization settings');
     }
 
     return response.data.data;

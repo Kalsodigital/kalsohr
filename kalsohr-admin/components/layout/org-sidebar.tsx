@@ -45,11 +45,19 @@ export function OrgSidebar() {
   const { hasAnyPermission, organization } = useOrgPermissions();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMastersOpen, setIsMastersOpen] = useState(false);
+  const [isRecruitmentOpen, setIsRecruitmentOpen] = useState(false);
 
   // Auto-expand Masters dropdown if on a masters page
   useEffect(() => {
     if (pathname.includes('/masters/')) {
       setIsMastersOpen(true);
+    }
+  }, [pathname]);
+
+  // Auto-expand Recruitment dropdown if on a recruitment page
+  useEffect(() => {
+    if (pathname.includes('/recruitment/')) {
+      setIsRecruitmentOpen(true);
     }
   }, [pathname]);
 
@@ -78,6 +86,28 @@ export function OrgSidebar() {
       label: 'Users',
       icon: <Users className="w-5 h-5" />,
       moduleCode: 'users',
+    },
+  ];
+
+  // Recruitment submenu items
+  const recruitmentItems: NavItem[] = [
+    {
+      href: `/${orgSlug}/recruitment/candidates`,
+      label: 'Candidates',
+      icon: <Users className="w-4 h-4" />,
+      moduleCode: 'recruitment',
+    },
+    {
+      href: `/${orgSlug}/recruitment/applications`,
+      label: 'Applications',
+      icon: <FileText className="w-4 h-4" />,
+      moduleCode: 'recruitment',
+    },
+    {
+      href: `/${orgSlug}/recruitment/interviews`,
+      label: 'Interviews',
+      icon: <Calendar className="w-4 h-4" />,
+      moduleCode: 'recruitment',
     },
   ];
 
@@ -140,6 +170,9 @@ export function OrgSidebar() {
     icon: <Settings className="w-5 h-5" />,
     moduleCode: 'settings',
   };
+
+  // Check if user has access to recruitment
+  const hasRecruitmentAccess = hasAnyPermission('recruitment');
 
   // Check if user has access to masters
   const hasMastersAccess = hasAnyPermission('master_data');
@@ -245,6 +278,57 @@ export function OrgSidebar() {
                 </Link>
               );
             })}
+
+            {/* Recruitment Dropdown */}
+            {hasRecruitmentAccess && (
+              <div className="space-y-1">
+                {/* Recruitment Toggle Button */}
+                <button
+                  onClick={() => setIsRecruitmentOpen(!isRecruitmentOpen)}
+                  className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200"
+                >
+                  <div className="flex items-center gap-3">
+                    <Briefcase className="w-5 h-5 text-gray-500" />
+                    <span>Recruitment</span>
+                  </div>
+                  {isRecruitmentOpen ? (
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  )}
+                </button>
+
+                {/* Recruitment Submenu */}
+                {isRecruitmentOpen && (
+                  <div className="ml-4 space-y-1">
+                    {recruitmentItems.map((item) => {
+                      const isActive = pathname === item.href;
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={`
+                            flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium
+                            transition-all duration-200
+                            ${
+                              isActive
+                                ? 'bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700'
+                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            }
+                          `}
+                        >
+                          <span className={isActive ? 'text-blue-600' : 'text-gray-400'}>
+                            {item.icon}
+                          </span>
+                          <span>{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Masters Dropdown */}
             {hasMastersAccess && (

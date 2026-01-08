@@ -171,9 +171,9 @@ export function CreateEmployeeDialog({ open, onOpenChange, orgSlug, onSuccess }:
   // Generate employee code
   const generateEmployeeCode = async () => {
     try {
-      const employees = await getAllEmployees(orgSlug);
+      const response = await getAllEmployees(orgSlug);
       const orgCode = organization?.code || 'ORG';
-      const nextNumber = (employees.length + 1).toString().padStart(4, '0');
+      const nextNumber = (response.employees.length + 1).toString().padStart(4, '0');
       const code = `${orgCode}-${nextNumber}`;
       setFormData({ ...formData, employeeCode: code });
       toast.success('Employee code generated');
@@ -235,27 +235,13 @@ export function CreateEmployeeDialog({ open, onOpenChange, orgSlug, onSuccess }:
     try {
       setIsSubmitting(true);
 
-      // Create FormData for file upload
-      const submitData = new FormData();
+      // Prepare employee data with siblings
+      const employeeData: CreateEmployeeData = {
+        ...formData,
+        siblings: siblings.length > 0 ? siblings : undefined,
+      };
 
-      // Append form fields
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
-          submitData.append(key, value.toString());
-        }
-      });
-
-      // Append profile picture if exists
-      if (profilePictureFile) {
-        submitData.append('profilePicture', profilePictureFile);
-      }
-
-      // Append siblings data
-      if (siblings.length > 0) {
-        submitData.append('siblings', JSON.stringify(siblings));
-      }
-
-      await createEmployee(orgSlug, submitData);
+      await createEmployee(orgSlug, employeeData, profilePictureFile);
       toast.success('Employee created successfully');
       onSuccess();
       handleClose();

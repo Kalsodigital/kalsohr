@@ -47,13 +47,27 @@ export interface Role {
   description: string | null;
 }
 
+export interface OrganizationModule {
+  id: number;
+  orgModuleId: number;
+  isEnabled: boolean;
+  orgModule: {
+    id: number;
+    code: string;
+    name: string;
+    isCore: boolean;
+  };
+}
+
 export interface Organization {
   id: number;
   name: string;
   slug: string;
+  code: string;
   logo: string | null;
   isActive: boolean;
   status: string;
+  organizationModules?: OrganizationModule[];
 }
 
 export interface LoginCredentials {

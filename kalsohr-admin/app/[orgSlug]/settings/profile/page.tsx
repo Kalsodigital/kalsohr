@@ -37,7 +37,7 @@ const StatCard = ({ icon: Icon, label, value, color }: StatCardProps) => {
     blue: 'bg-blue-100 text-blue-600',
     green: 'bg-green-100 text-green-600',
     purple: 'bg-purple-100 text-purple-600',
-    indigo: 'bg-indigo-100 text-indigo-600',
+    indigo: 'bg-blue-100 text-blue-600',
   };
 
   return (

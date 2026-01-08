@@ -6,6 +6,8 @@ import fs from 'fs';
 const uploadDir = path.join(__dirname, '../../uploads/profiles');
 const documentDir = path.join(__dirname, '../../uploads/documents');
 const organizationDir = path.join(__dirname, '../../uploads/organizations');
+const candidateProfileDir = path.join(__dirname, '../../uploads/candidates/profiles');
+const candidateResumeDir = path.join(__dirname, '../../uploads/candidates/resumes');
 
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -17,6 +19,14 @@ if (!fs.existsSync(documentDir)) {
 
 if (!fs.existsSync(organizationDir)) {
   fs.mkdirSync(organizationDir, { recursive: true });
+}
+
+if (!fs.existsSync(candidateProfileDir)) {
+  fs.mkdirSync(candidateProfileDir, { recursive: true });
+}
+
+if (!fs.existsSync(candidateResumeDir)) {
+  fs.mkdirSync(candidateResumeDir, { recursive: true });
 }
 
 // Configure storage for profile pictures
@@ -126,6 +136,57 @@ export const employeeUpload = multer({
   { name: 'idProof', maxCount: 1 }
 ]);
 
+// Combined upload for candidate (resume + profile picture)
+export const candidateUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      // Route to appropriate directory based on field name
+      if (file.fieldname === 'profilePicture') {
+        cb(null, candidateProfileDir);
+      } else if (file.fieldname === 'resume') {
+        cb(null, candidateResumeDir);
+      } else {
+        cb(new Error('Invalid field name'), '');
+      }
+    },
+    filename: (req, file, cb) => {
+      // Generate unique filename: timestamp-randomstring-originalname
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+      const ext = path.extname(file.originalname);
+      const nameWithoutExt = path.basename(file.originalname, ext);
+      cb(null, `${nameWithoutExt}-${uniqueSuffix}${ext}`);
+    },
+  }),
+  fileFilter: (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    // Apply appropriate filter based on field name
+    if (file.fieldname === 'profilePicture') {
+      // Only images for profile pictures
+      const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (allowedMimes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type for profile picture. Only JPEG, PNG, GIF, and WebP images are allowed.'));
+      }
+    } else if (file.fieldname === 'resume') {
+      // PDF and DOC files for resumes
+      const allowedMimes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (allowedMimes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type for resume. Only PDF, DOC, and DOCX files are allowed.'));
+      }
+    } else {
+      cb(new Error('Invalid field name'));
+    }
+  },
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+}).fields([
+  { name: 'profilePicture', maxCount: 1 },
+  { name: 'resume', maxCount: 1 }
+]);
+
 // Configure multer for organization logos
 export const organizationLogoUpload = multer({
   storage: multer.diskStorage({
@@ -167,6 +228,20 @@ export const deleteOldDocument = (filePath: string | null) => {
     const fullPath = path.join(__dirname, '../../', filePath);
     if (fs.existsSync(fullPath)) {
       fs.unlinkSync(fullPath);
+    }
+  }
+};
+
+// Generic helper to delete old file from any subdirectory
+export const deleteOldFile = (fileName: string | null, subdirectory: string) => {
+  if (!fileName) return;
+
+  const fullPath = path.join(__dirname, '../../uploads/', subdirectory, fileName);
+  if (fs.existsSync(fullPath)) {
+    try {
+      fs.unlinkSync(fullPath);
+    } catch (error) {
+      console.error(`Error deleting file ${fullPath}:`, error);
     }
   }
 };

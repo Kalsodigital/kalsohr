@@ -69,6 +69,7 @@ export interface Organization {
   stateId: number | null;
   cityId: number | null;
   postalCode: string | null;
+  timezone: string | null;
   organizationTypeId: number | null;
   industryTypeId: number | null;
   businessCategoryId: number | null;
@@ -291,4 +292,8 @@ export interface UpdateOrganizationProfileData {
   themePrimaryColor?: string;
   themeSecondaryColor?: string;
   themeAccentColor?: string;
+}
+
+export interface UpdateOrganizationSettingsData {
+  timezone?: string;
 }

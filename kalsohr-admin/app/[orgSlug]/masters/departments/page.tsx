@@ -259,8 +259,8 @@ export default function DepartmentsPage() {
                       <TableRow key={item.id} className="border-b border-gray-100">
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                              <Briefcase className="w-4 h-4 text-indigo-600" />
+                            <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                              <Briefcase className="w-4 h-4 text-blue-600" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">

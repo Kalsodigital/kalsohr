@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authenticate } from '../middleware/auth.middleware';
 import { tenantContext } from '../middleware/tenant.middleware';
 import { checkOrgPermission, checkAnyOrgPermission } from '../middleware/permission.middleware';
-import { upload, employeeUpload, organizationLogoUpload } from '../middleware/upload.middleware';
+import { upload, employeeUpload, organizationLogoUpload, candidateUpload } from '../middleware/upload.middleware';
 import {
   getAllRoles,
   getRoleById,
@@ -110,9 +110,53 @@ import {
   deleteReligion,
 } from '../controllers/religion.controller';
 import {
+  getAllGenders,
+  getGenderById,
+} from '../controllers/gender.controller';
+import {
+  getAllEducationLevels,
+  getEducationLevelById,
+} from '../controllers/educationlevel.controller';
+import {
   getOrganizationProfile,
   updateOrganizationProfile,
+  updateOrganizationSettings,
 } from '../controllers/organization.controller';
+import {
+  getAllCandidates,
+  getCandidateById,
+  createCandidate,
+  updateCandidate,
+  deleteCandidate,
+  bulkExportCandidates,
+} from '../controllers/candidate.controller';
+import {
+  getCandidateComments,
+  createCandidateComment,
+  updateCandidateComment,
+  deleteCandidateComment,
+  markCommentsAsViewed,
+  getRecentComments,
+} from '../controllers/comment.controller';
+import {
+  getAllApplications,
+  getApplicationPipeline,
+  getApplicationById,
+  createApplication,
+  updateApplication,
+  updateApplicationStatus,
+  deleteApplication,
+} from '../controllers/application.controller';
+import {
+  getAllInterviewSchedules,
+  getInterviewSchedulesByDate,
+  getMyInterviews,
+  getInterviewScheduleById,
+  createInterviewSchedule,
+  updateInterviewSchedule,
+  submitFeedback,
+  deleteInterviewSchedule,
+} from '../controllers/interview-schedule.controller';
 
 const router = Router({ mergeParams: true }); // mergeParams: true to access :orgSlug
 
@@ -299,6 +343,13 @@ router.put(
   updateOrganizationProfile
 );
 
+// Update organization settings (timezone, etc.)
+router.put(
+  '/organization/settings',
+  checkOrgPermission('settings', 'canUpdate'),
+  updateOrganizationSettings
+);
+
 /**
  * Master Data Routes (Read-only for organizations)
  * /api/:orgSlug/masters/*
@@ -389,6 +440,14 @@ router.post('/masters/religions', checkOrgPermission('master_data', 'canWrite'),
 router.put('/masters/religions/:id', checkOrgPermission('master_data', 'canUpdate'), updateReligion);
 router.delete('/masters/religions/:id', checkOrgPermission('master_data', 'canDelete'), deleteReligion);
 
+// Genders (Global master - read-only for organizations)
+router.get('/masters/genders', checkOrgPermission('master_data', 'canRead'), getAllGenders);
+router.get('/masters/genders/:id', checkOrgPermission('master_data', 'canRead'), getGenderById);
+
+// Education Levels (Global master - read-only for organizations)
+router.get('/masters/education-levels', checkOrgPermission('master_data', 'canRead'), getAllEducationLevels);
+router.get('/masters/education-levels/:id', checkOrgPermission('master_data', 'canRead'), getEducationLevelById);
+
 /**
  * Employee Management Routes
  * /api/:orgSlug/employees
@@ -415,5 +474,48 @@ router.delete('/employees/:id', checkOrgPermission('employees', 'canDelete'), de
 
 // Bulk update employee status
 router.patch('/employees/bulk-status', checkOrgPermission('employees', 'canUpdate'), bulkUpdateEmployeeStatus);
+
+/**
+ * Recruitment Module Routes
+ * /api/:orgSlug/recruitment/*
+ * Comprehensive recruitment management: Candidates, Applications, Interview Scheduling
+ */
+
+// Candidate Management Routes
+router.get('/recruitment/candidates', checkOrgPermission('recruitment', 'canRead'), getAllCandidates);
+router.get('/recruitment/candidates/export/csv', checkOrgPermission('recruitment', 'canExport'), bulkExportCandidates);
+router.get('/recruitment/candidates/:id', checkOrgPermission('recruitment', 'canRead'), getCandidateById);
+router.post('/recruitment/candidates', checkOrgPermission('recruitment', 'canWrite'), candidateUpload, createCandidate);
+router.put('/recruitment/candidates/:id', checkOrgPermission('recruitment', 'canUpdate'), candidateUpload, updateCandidate);
+router.delete('/recruitment/candidates/:id', checkOrgPermission('recruitment', 'canDelete'), deleteCandidate);
+
+// Candidate Comments Routes
+router.get('/recruitment/candidates/:candidateId/comments', checkOrgPermission('recruitment', 'canRead'), getCandidateComments);
+router.post('/recruitment/candidates/:candidateId/comments', checkOrgPermission('recruitment', 'canWrite'), createCandidateComment);
+router.post('/recruitment/candidates/:candidateId/comments/mark-viewed', checkOrgPermission('recruitment', 'canRead'), markCommentsAsViewed);
+router.put('/recruitment/candidates/:candidateId/comments/:commentId', checkOrgPermission('recruitment', 'canWrite'), updateCandidateComment);
+router.delete('/recruitment/candidates/:candidateId/comments/:commentId', checkOrgPermission('recruitment', 'canDelete'), deleteCandidateComment);
+
+// Recruitment Dashboard Routes
+router.get('/recruitment/dashboard/recent-comments', checkOrgPermission('recruitment', 'canRead'), getRecentComments);
+
+// Application Management Routes (Job Applications Pipeline)
+router.get('/recruitment/applications', checkOrgPermission('recruitment', 'canRead'), getAllApplications);
+router.get('/recruitment/applications/pipeline', checkOrgPermission('recruitment', 'canRead'), getApplicationPipeline);
+router.get('/recruitment/applications/:id', checkOrgPermission('recruitment', 'canRead'), getApplicationById);
+router.post('/recruitment/applications', checkOrgPermission('recruitment', 'canWrite'), createApplication);
+router.put('/recruitment/applications/:id', checkOrgPermission('recruitment', 'canUpdate'), updateApplication);
+router.patch('/recruitment/applications/:id/status', checkOrgPermission('recruitment', 'canUpdate'), updateApplicationStatus);
+router.delete('/recruitment/applications/:id', checkOrgPermission('recruitment', 'canDelete'), deleteApplication);
+
+// Interview Schedule Management Routes
+router.get('/recruitment/interviews', checkOrgPermission('recruitment', 'canRead'), getAllInterviewSchedules);
+router.get('/recruitment/interviews/calendar', checkOrgPermission('recruitment', 'canRead'), getInterviewSchedulesByDate);
+router.get('/recruitment/interviews/my-interviews', checkOrgPermission('recruitment', 'canRead'), getMyInterviews);
+router.get('/recruitment/interviews/:id', checkOrgPermission('recruitment', 'canRead'), getInterviewScheduleById);
+router.post('/recruitment/interviews', checkOrgPermission('recruitment', 'canWrite'), createInterviewSchedule);
+router.put('/recruitment/interviews/:id', checkOrgPermission('recruitment', 'canUpdate'), updateInterviewSchedule);
+router.patch('/recruitment/interviews/:id/feedback', checkOrgPermission('recruitment', 'canUpdate'), submitFeedback);
+router.delete('/recruitment/interviews/:id', checkOrgPermission('recruitment', 'canDelete'), deleteInterviewSchedule);
 
 export default router;

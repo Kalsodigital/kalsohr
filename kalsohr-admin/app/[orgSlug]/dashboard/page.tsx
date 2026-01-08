@@ -1,7 +1,10 @@
 'use client';
 
+import { useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/auth-store';
+import { useOrgPermissions } from '@/lib/hooks/useOrgPermissions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { RecentCommentsWidget } from '@/components/dashboard/recent-comments-widget';
 import {
   Building2,
   Shield,
@@ -13,6 +16,9 @@ import {
 
 export default function OrgDashboardPage() {
   const { user } = useAuthStore();
+  const params = useParams();
+  const orgSlug = params.orgSlug as string;
+  const { hasPermission } = useOrgPermissions();
 
   return (
     <div className="space-y-8">
@@ -207,6 +213,13 @@ export default function OrgDashboardPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Recent Comments Widget - Only show if user has recruitment module access */}
+        {hasPermission('recruitment', 'canRead') && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <RecentCommentsWidget orgSlug={orgSlug} limit={10} />
+          </div>
+        )}
       </div>
   );
 }

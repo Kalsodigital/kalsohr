@@ -1609,3 +1609,98 @@ export const updateOrganizationProfile = async (
     );
   }
 };
+
+/**
+ * Update organization settings (timezone, etc.)
+ * PUT /api/:orgSlug/organization/settings
+ */
+export const updateOrganizationSettings = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  try {
+    const userId = (req as any).user?.userId;
+    const organization = (req as any).organization;
+
+    if (!organization) {
+      return sendError(
+        res,
+        'Organization context not found',
+        STATUS_CODES.BAD_REQUEST
+      );
+    }
+
+    const { timezone } = req.body;
+
+    // Validate timezone if provided
+    if (timezone) {
+      try {
+        // Test if the timezone is valid by trying to format a date with it
+        new Intl.DateTimeFormat('en-US', { timeZone: timezone }).format(new Date());
+      } catch (error) {
+        return sendError(
+          res,
+          'Invalid timezone. Please provide a valid IANA timezone (e.g., "Asia/Kolkata", "America/New_York")',
+          STATUS_CODES.BAD_REQUEST
+        );
+      }
+    }
+
+    // Update organization settings
+    const updatedOrg = await prisma.organization.update({
+      where: { id: organization.id },
+      data: {
+        ...(timezone !== undefined && { timezone }),
+        updatedBy: userId,
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        code: true,
+        logo: true,
+        email: true,
+        phone: true,
+        address: true,
+        countryId: true,
+        stateId: true,
+        cityId: true,
+        postalCode: true,
+        timezone: true,
+        organizationTypeId: true,
+        industryTypeId: true,
+        businessCategoryId: true,
+        isActive: true,
+        status: true,
+        subscriptionPlanId: true,
+        subscriptionStartDate: true,
+        subscriptionExpiryDate: true,
+        subscriptionTenure: true,
+        isTrial: true,
+        trialEndsAt: true,
+        maxUsers: true,
+        maxEmployees: true,
+        maxStorageMb: true,
+        themePrimaryColor: true,
+        themeSecondaryColor: true,
+        themeAccentColor: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return sendSuccess(
+      res,
+      updatedOrg,
+      'Organization settings updated successfully'
+    );
+  } catch (error) {
+    console.error('Update organization settings error:', error);
+    return sendError(
+      res,
+      'Failed to update organization settings',
+      STATUS_CODES.INTERNAL_SERVER_ERROR,
+      error
+    );
+  }
+};

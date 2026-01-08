@@ -83,6 +83,9 @@ export function CreateEmployeeDialog({ open, onOpenChange, orgSlug, onSuccess }:
     isActive: true,
   });
 
+  // Organizational position (not part of employee data, just for auto-filling dept & designation)
+  const [selectedOrgPositionId, setSelectedOrgPositionId] = useState<number | undefined>(undefined);
+
   // Siblings
   const [siblings, setSiblings] = useState<SiblingData[]>([]);
   const [showAddSibling, setShowAddSibling] = useState(false);
@@ -202,18 +205,15 @@ export function CreateEmployeeDialog({ open, onOpenChange, orgSlug, onSuccess }:
     const selectedPosition = organizationalPositions.find(p => p.id === positionId);
     if (selectedPosition) {
       // Auto-populate department and designation from org position
+      setSelectedOrgPositionId(positionId);
       setFormData({
         ...formData,
-        organizationalPositionId: positionId,
         departmentId: selectedPosition.departmentId,
         designationId: selectedPosition.designationId,
       });
     } else {
       // Clear org position
-      setFormData({
-        ...formData,
-        organizationalPositionId: undefined,
-      });
+      setSelectedOrgPositionId(undefined);
     }
   };
 
@@ -897,12 +897,12 @@ export function CreateEmployeeDialog({ open, onOpenChange, orgSlug, onSuccess }:
                           <span className="text-xs text-gray-500 font-normal">(Optional - auto-fills dept & designation)</span>
                         </Label>
                         <Select
-                          value={formData.organizationalPositionId ? String(formData.organizationalPositionId) : 'none'}
+                          value={selectedOrgPositionId ? String(selectedOrgPositionId) : 'none'}
                           onValueChange={(value) => {
                             if (value && value !== 'none') {
                               handleOrganizationalPositionChange(parseInt(value));
                             } else {
-                              setFormData({ ...formData, organizationalPositionId: undefined });
+                              setSelectedOrgPositionId(undefined);
                             }
                           }}
                         >
@@ -925,7 +925,7 @@ export function CreateEmployeeDialog({ open, onOpenChange, orgSlug, onSuccess }:
                           <Label htmlFor="department" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                             <Building className="w-4 h-4 text-blue-600" />
                             Department <span className="text-red-500">*</span>
-                            {formData.organizationalPositionId && (
+                            {selectedOrgPositionId && (
                               <span className="text-xs text-purple-600">(From org position)</span>
                             )}
                           </Label>
@@ -934,7 +934,7 @@ export function CreateEmployeeDialog({ open, onOpenChange, orgSlug, onSuccess }:
                             onValueChange={(value) =>
                               setFormData({ ...formData, departmentId: parseInt(value) })
                             }
-                            disabled={!!formData.organizationalPositionId}
+                            disabled={!!selectedOrgPositionId}
                           >
                             <SelectTrigger id="department" className="h-11 w-full border-gray-200 focus:border-blue-500 focus:ring-blue-500">
                               <SelectValue placeholder="Select department" />
@@ -953,7 +953,7 @@ export function CreateEmployeeDialog({ open, onOpenChange, orgSlug, onSuccess }:
                           <Label htmlFor="designation" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                             <Briefcase className="w-4 h-4 text-blue-600" />
                             Designation <span className="text-red-500">*</span>
-                            {formData.organizationalPositionId && (
+                            {selectedOrgPositionId && (
                               <span className="text-xs text-purple-600">(From org position)</span>
                             )}
                           </Label>
@@ -962,7 +962,7 @@ export function CreateEmployeeDialog({ open, onOpenChange, orgSlug, onSuccess }:
                             onValueChange={(value) =>
                               setFormData({ ...formData, designationId: parseInt(value) })
                             }
-                            disabled={!!formData.organizationalPositionId}
+                            disabled={!!selectedOrgPositionId}
                           >
                             <SelectTrigger id="designation" className="h-11 w-full border-gray-200 focus:border-blue-500 focus:ring-blue-500">
                               <SelectValue placeholder="Select designation" />

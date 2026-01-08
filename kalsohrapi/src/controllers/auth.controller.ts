@@ -44,6 +44,24 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
             slug: true,
             isActive: true,
             status: true,
+            organizationModules: {
+              where: {
+                isEnabled: true,
+              },
+              select: {
+                id: true,
+                orgModuleId: true,
+                isEnabled: true,
+                orgModule: {
+                  select: {
+                    id: true,
+                    code: true,
+                    name: true,
+                    isCore: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -272,6 +290,24 @@ export const getCurrentUser = async (
             logo: true,
             isActive: true,
             status: true,
+            organizationModules: {
+              where: {
+                isEnabled: true,
+              },
+              select: {
+                id: true,
+                orgModuleId: true,
+                isEnabled: true,
+                orgModule: {
+                  select: {
+                    id: true,
+                    code: true,
+                    name: true,
+                    isCore: true,
+                  },
+                },
+              },
+            },
           },
         },
       },

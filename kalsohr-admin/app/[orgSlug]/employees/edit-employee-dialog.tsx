@@ -79,6 +79,9 @@ export function EditEmployeeDialog({ open, onOpenChange, orgSlug, employee, onSu
   // Form data
   const [formData, setFormData] = useState<UpdateEmployeeData>({});
 
+  // Organizational position (not part of employee data, just for auto-filling dept & designation)
+  const [selectedOrgPositionId, setSelectedOrgPositionId] = useState<number | undefined>(undefined);
+
   // Siblings
   const [siblings, setSiblings] = useState<SiblingData[]>([]);
   const [showAddSibling, setShowAddSibling] = useState(false);
@@ -197,52 +200,51 @@ export function EditEmployeeDialog({ open, onOpenChange, orgSlug, employee, onSu
         setIdProofPreview(docUrl);
       }
 
-      // Populate form data
+      // Populate form data (convert null to undefined for type compatibility)
       setFormData({
         firstName: fullEmployee.firstName,
-        lastName: fullEmployee.lastName,
-        email: fullEmployee.email,
-        phone: fullEmployee.phone,
-        alternatePhone: fullEmployee.alternatePhone,
+        lastName: fullEmployee.lastName ?? undefined,
+        email: fullEmployee.email ?? undefined,
+        phone: fullEmployee.phone ?? undefined,
+        alternatePhone: fullEmployee.alternatePhone ?? undefined,
         dateOfBirth: fullEmployee.dateOfBirth ? fullEmployee.dateOfBirth.split('T')[0] : '',
         dateOfJoining: fullEmployee.dateOfJoining ? fullEmployee.dateOfJoining.split('T')[0] : '',
         dateOfLeaving: fullEmployee.dateOfLeaving ? fullEmployee.dateOfLeaving.split('T')[0] : '',
-        organizationalPositionId: fullEmployee.organizationalPositionId,
-        departmentId: fullEmployee.departmentId,
-        designationId: fullEmployee.designationId,
-        branchId: fullEmployee.branchId,
-        employmentTypeId: fullEmployee.employmentTypeId,
-        salary: fullEmployee.salary,
+        departmentId: fullEmployee.departmentId ?? undefined,
+        designationId: fullEmployee.designationId ?? undefined,
+        branchId: fullEmployee.branchId ?? undefined,
+        employmentTypeId: fullEmployee.employmentTypeId ?? undefined,
+        salary: fullEmployee.salary ?? undefined,
         status: fullEmployee.status,
         isActive: fullEmployee.isActive,
-        genderId: fullEmployee.genderId,
-        maritalStatusId: fullEmployee.maritalStatusId,
-        bloodGroup: fullEmployee.bloodGroupMaster?.name || fullEmployee.bloodGroup,
-        religion: fullEmployee.religionMaster?.name || fullEmployee.religion,
-        educationLevel: fullEmployee.educationLevelMaster?.name || fullEmployee.educationLevel,
-        degrees: fullEmployee.degrees,
-        currentAddress: fullEmployee.currentAddress,
-        permanentAddress: fullEmployee.permanentAddress,
-        cityId: fullEmployee.cityId,
-        postalCode: fullEmployee.postalCode,
-        fatherName: fullEmployee.fatherName,
-        fatherOccupation: fullEmployee.fatherOccupation,
-        fatherContact: fullEmployee.fatherContact,
-        fatherStatus: fullEmployee.fatherStatus,
-        motherName: fullEmployee.motherName,
-        motherOccupation: fullEmployee.motherOccupation,
-        motherContact: fullEmployee.motherContact,
-        motherStatus: fullEmployee.motherStatus,
-        emergencyContactName: fullEmployee.emergencyContactName,
-        emergencyContactPhone: fullEmployee.emergencyContactPhone,
-        familyAddress: fullEmployee.familyAddress,
-        profilePicture: fullEmployee.profilePicture,
-        aadharNumber: fullEmployee.aadharNumber,
-        panNumber: fullEmployee.panNumber,
-        idProof: fullEmployee.idProof,
-        bankAccountNumber: fullEmployee.bankAccountNumber,
-        bankIfscCode: fullEmployee.bankIfscCode,
-        uanNumber: fullEmployee.uanNumber,
+        genderId: fullEmployee.genderId ?? undefined,
+        maritalStatusId: fullEmployee.maritalStatusId ?? undefined,
+        bloodGroup: (fullEmployee.bloodGroupMaster?.name || fullEmployee.bloodGroup) ?? undefined,
+        religion: (fullEmployee.religionMaster?.name || fullEmployee.religion) ?? undefined,
+        educationLevel: (fullEmployee.educationLevelMaster?.name || fullEmployee.educationLevel) ?? undefined,
+        degrees: fullEmployee.degrees ?? undefined,
+        currentAddress: fullEmployee.currentAddress ?? undefined,
+        permanentAddress: fullEmployee.permanentAddress ?? undefined,
+        cityId: fullEmployee.cityId ?? undefined,
+        postalCode: fullEmployee.postalCode ?? undefined,
+        fatherName: fullEmployee.fatherName ?? undefined,
+        fatherOccupation: fullEmployee.fatherOccupation ?? undefined,
+        fatherContact: fullEmployee.fatherContact ?? undefined,
+        fatherStatus: fullEmployee.fatherStatus ?? undefined,
+        motherName: fullEmployee.motherName ?? undefined,
+        motherOccupation: fullEmployee.motherOccupation ?? undefined,
+        motherContact: fullEmployee.motherContact ?? undefined,
+        motherStatus: fullEmployee.motherStatus ?? undefined,
+        emergencyContactName: fullEmployee.emergencyContactName ?? undefined,
+        emergencyContactPhone: fullEmployee.emergencyContactPhone ?? undefined,
+        familyAddress: fullEmployee.familyAddress ?? undefined,
+        profilePicture: fullEmployee.profilePicture ?? undefined,
+        aadharNumber: fullEmployee.aadharNumber ?? undefined,
+        panNumber: fullEmployee.panNumber ?? undefined,
+        idProof: fullEmployee.idProof ?? undefined,
+        bankAccountNumber: fullEmployee.bankAccountNumber ?? undefined,
+        bankIfscCode: fullEmployee.bankIfscCode ?? undefined,
+        uanNumber: fullEmployee.uanNumber ?? undefined,
       });
 
       // Populate siblings
@@ -348,18 +350,15 @@ export function EditEmployeeDialog({ open, onOpenChange, orgSlug, employee, onSu
     const selectedPosition = organizationalPositions.find(p => p.id === positionId);
     if (selectedPosition) {
       // Auto-populate department and designation from org position
+      setSelectedOrgPositionId(positionId);
       setFormData({
         ...formData,
-        organizationalPositionId: positionId,
         departmentId: selectedPosition.departmentId,
         designationId: selectedPosition.designationId,
       });
     } else {
       // Clear org position
-      setFormData({
-        ...formData,
-        organizationalPositionId: undefined,
-      });
+      setSelectedOrgPositionId(undefined);
     }
   };
 
@@ -534,7 +533,7 @@ export function EditEmployeeDialog({ open, onOpenChange, orgSlug, employee, onSu
 
       // Handle ID proof removal
       if (removeIdProof) {
-        data.idProof = null;
+        data.idProof = undefined;
       }
 
       console.log('🔍 Frontend - Calling updateEmployee with:', {
@@ -850,12 +849,12 @@ export function EditEmployeeDialog({ open, onOpenChange, orgSlug, employee, onSu
                         <span className="text-xs text-gray-500 font-normal">(Optional - auto-fills dept & designation)</span>
                       </Label>
                       <Select
-                        value={formData.organizationalPositionId ? String(formData.organizationalPositionId) : 'none'}
+                        value={selectedOrgPositionId ? String(selectedOrgPositionId) : 'none'}
                         onValueChange={(value) => {
                           if (value && value !== 'none') {
                             handleOrganizationalPositionChange(parseInt(value));
                           } else {
-                            setFormData({ ...formData, organizationalPositionId: undefined });
+                            setSelectedOrgPositionId(undefined);
                           }
                         }}
                       >
@@ -878,7 +877,7 @@ export function EditEmployeeDialog({ open, onOpenChange, orgSlug, employee, onSu
                         <Label htmlFor="department" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                           <Building className="w-4 h-4 text-blue-600" />
                           Department <span className="text-red-500">*</span>
-                          {formData.organizationalPositionId && (
+                          {selectedOrgPositionId && (
                             <span className="text-xs text-purple-600">(From org position)</span>
                           )}
                         </Label>
@@ -887,7 +886,7 @@ export function EditEmployeeDialog({ open, onOpenChange, orgSlug, employee, onSu
                           onValueChange={(value) =>
                             setFormData({ ...formData, departmentId: parseInt(value) })
                           }
-                          disabled={!!formData.organizationalPositionId}
+                          disabled={!!selectedOrgPositionId}
                         >
                           <SelectTrigger id="department" className="h-11 w-full border-gray-200 focus:border-blue-500 focus:ring-blue-500">
                             <SelectValue placeholder="Select department" />
@@ -906,7 +905,7 @@ export function EditEmployeeDialog({ open, onOpenChange, orgSlug, employee, onSu
                         <Label htmlFor="designation" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                           <Briefcase className="w-4 h-4 text-blue-600" />
                           Designation <span className="text-red-500">*</span>
-                          {formData.organizationalPositionId && (
+                          {selectedOrgPositionId && (
                             <span className="text-xs text-purple-600">(From org position)</span>
                           )}
                         </Label>
@@ -915,7 +914,7 @@ export function EditEmployeeDialog({ open, onOpenChange, orgSlug, employee, onSu
                           onValueChange={(value) =>
                             setFormData({ ...formData, designationId: parseInt(value) })
                           }
-                          disabled={!!formData.organizationalPositionId}
+                          disabled={!!selectedOrgPositionId}
                         >
                           <SelectTrigger id="designation" className="h-11 w-full border-gray-200 focus:border-blue-500 focus:ring-blue-500">
                             <SelectValue placeholder="Select designation" />

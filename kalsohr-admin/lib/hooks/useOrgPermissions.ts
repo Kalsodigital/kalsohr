@@ -20,6 +20,44 @@ export function useOrgPermissions() {
   }, []);
 
   /**
+   * Check if a module is enabled for the user's organization
+   */
+  const isModuleEnabled = (moduleCode: string): boolean => {
+    // Super admins don't have organization module restrictions when impersonating
+    if (user?.isSuperAdmin && impersonatedOrg) {
+      return true;
+    }
+
+    // Check if module is enabled in the organization
+    if (!user?.organization?.organizationModules) {
+      return true; // If no modules data, allow access (backward compatibility)
+    }
+
+    // Find the module in the organization's modules
+    const orgModule = user.organization.organizationModules.find(
+      (om) => om.orgModule.code === moduleCode
+    );
+
+    // If module not found in the list, check if any core module exists
+    // If core modules exist in the list, it means non-core modules must be explicitly enabled
+    const hasCoreModules = user.organization.organizationModules.some(om => om.orgModule.isCore);
+
+    if (!orgModule) {
+      // If we have core modules in the list, then this module should be explicitly listed
+      // If not listed, it's not enabled
+      return !hasCoreModules;
+    }
+
+    // Core modules are always enabled if they're in the list
+    if (orgModule.orgModule.isCore) {
+      return true;
+    }
+
+    // Non-core modules need to be explicitly enabled
+    return orgModule.isEnabled;
+  };
+
+  /**
    * Check if user has a specific permission for a module
    * Organization users must have explicit permissions
    * Super admins impersonating have full access except delete/export (support mode restrictions)
@@ -27,6 +65,11 @@ export function useOrgPermissions() {
   const hasPermission = (moduleCode: string, action: PermissionAction): boolean => {
     // Block super admins who are NOT impersonating
     if (user?.isSuperAdmin && !impersonatedOrg) {
+      return false;
+    }
+
+    // Check if module is enabled for the organization first
+    if (!isModuleEnabled(moduleCode)) {
       return false;
     }
 
@@ -62,6 +105,11 @@ export function useOrgPermissions() {
   const hasAnyPermission = (moduleCode: string): boolean => {
     // Block super admins who are NOT impersonating
     if (user?.isSuperAdmin && !impersonatedOrg) {
+      return false;
+    }
+
+    // Check if module is enabled for the organization first
+    if (!isModuleEnabled(moduleCode)) {
       return false;
     }
 
@@ -120,6 +168,7 @@ export function useOrgPermissions() {
   return {
     hasPermission,
     hasAnyPermission,
+    isModuleEnabled,
     getModulePermissions,
     belongsToOrg,
     getOrgSlug,

@@ -78,6 +78,7 @@ model Organization {
   cityId     Int?
   city       City?    @relation(fields: [cityId], references: [id])
   postalCode String?  @db.VarChar(20)
+  timezone   String?  @default("UTC") @db.VarChar(50) // IANA timezone (e.g., "Asia/Kolkata", "America/New_York")
 
   // Subscription
   subscriptionPlanId     Int
@@ -125,6 +126,7 @@ model Organization {
   holidays                Holiday[]
   jobPositions            JobPosition[]
   candidates              Candidate[]
+  candidateComments       CandidateComment[]
   applications            Application[]
   interviewSchedules      InterviewSchedule[]
   auditLogs               AuditLog[]
@@ -280,6 +282,7 @@ model City {
 
   employees     Employee[]
   organizations Organization[]
+  candidates    Candidate[]
 
   @@unique([stateId, code])
   @@index([stateId])
@@ -317,7 +320,8 @@ model Gender {
   createdBy Int?
   updatedBy Int?
 
-  employees Employee[]
+  employees  Employee[]
+  candidates Candidate[]
 
   @@map("genders")
 }
@@ -335,7 +339,8 @@ model MaritalStatus {
   createdBy Int?
   updatedBy Int?
 
-  employees Employee[]
+  employees  Employee[]
+  candidates Candidate[]
 
   @@map("marital_statuses")
 }
@@ -372,7 +377,8 @@ model EducationLevel {
   createdBy Int?
   updatedBy Int?
 
-  employees Employee[]
+  employees  Employee[]
+  candidates Candidate[]
 
   @@map("education_levels")
 }
@@ -501,6 +507,9 @@ model User {
   auditLogs             AuditLog[]
   plansCreated          SubscriptionPlan[]  @relation("PlanCreator")
   plansUpdated          SubscriptionPlan[]  @relation("PlanUpdater")
+  candidateComments     CandidateComment[]
+  commentViews          CommentView[]
+  statusChangeLogs      StatusChangeLog[]
 
   @@index([organizationId, email])
   @@index([isActive])
@@ -1101,35 +1110,128 @@ model Candidate {
   organizationId Int
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  firstName String  @db.VarChar(100)
-  lastName  String? @db.VarChar(100)
-  email     String  @db.VarChar(255)
-  phone     String? @db.VarChar(20)
+  // Basic Information
+  firstName      String    @db.VarChar(100)
+  lastName       String?   @db.VarChar(100)
+  email          String    @db.VarChar(255)
+  phone          String?   @db.VarChar(20)
+  alternatePhone String?   @db.VarChar(20)
+  dateOfBirth    DateTime? @db.DateTime(3)
 
+  // Master Data Relations
+  genderId            Int?
+  genderMaster        Gender?        @relation(fields: [genderId], references: [id])
+  maritalStatusId     Int?
+  maritalStatusMaster MaritalStatus? @relation(fields: [maritalStatusId], references: [id])
+
+  // Files
   resumePath     String? @db.VarChar(255)
   profilePicture String? @db.VarChar(255)
 
+  // Professional Details
   totalExperience Int?
   currentCompany  String?  @db.VarChar(255)
   currentSalary   Decimal? @db.Decimal(10, 2)
   expectedSalary  Decimal? @db.Decimal(10, 2)
   noticePeriod    Int?
 
-  skills         String? @db.Text
-  qualifications String? @db.Text
+  skills          String? @db.Text
+  qualifications  String? @db.Text
+  educationLevel  String? @db.VarChar(100) // @deprecated - use educationLevelId
 
-  source String? @db.VarChar(100)
-  status String  @default("New") @db.VarChar(20) // New, In Process, Selected, Rejected, On Hold
+  educationLevelId     Int?
+  educationLevelMaster EducationLevel? @relation(fields: [educationLevelId], references: [id])
+
+  // Address
+  currentAddress   String? @db.Text
+  permanentAddress String? @db.Text
+  cityId           Int?
+  cityMaster       City?   @relation(fields: [cityId], references: [id])
+  postalCode       String? @db.VarChar(20)
+
+  // Family & Personal Details
+  fatherName             String? @db.VarChar(100)
+  fatherStatus           String? @db.VarChar(50) // Alive, Deceased, Separated, Unknown
+  fatherOccupation       String? @db.VarChar(100)
+  fatherContact          String? @db.VarChar(20)
+  motherName             String? @db.VarChar(100)
+  motherStatus           String? @db.VarChar(50) // Alive, Deceased, Separated, Unknown
+  motherOccupation       String? @db.VarChar(100)
+  motherContact          String? @db.VarChar(20)
+  familyAddress          String? @db.Text
+  emergencyContactName   String? @db.VarChar(100)
+  emergencyContactPhone  String? @db.VarChar(20)
+
+  // Application Details
+  source     String? @db.VarChar(100)
+  referredBy String? @db.VarChar(255)
+  notes      String? @db.Text
+  status     String  @default("New") @db.VarChar(20) // New, In Process, Selected, Rejected, On Hold
+
+  // Audit fields
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy Int?
+  updatedBy Int?
+
+  // Relations
+  applications Application[]
+  comments     CandidateComment[]
+  commentViews CommentView[]
+
+  @@index([organizationId, status])
+  @@map("candidates")
+}
+
+model CandidateComment {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  candidateId Int
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  sectionKey String @db.VarChar(100) // e.g., "quick_info", "contact_info"
+  comment    String @db.Text
+  rating     Int?   @db.TinyInt // 1-5 stars, nullable
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  // Single-level threading
+  parentCommentId Int?
+  parentComment   CandidateComment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies         CandidateComment[] @relation("CommentReplies")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   createdBy Int?
   updatedBy Int?
 
-  applications Application[]
+  @@index([organizationId, candidateId, sectionKey])
+  @@index([candidateId, sectionKey])
+  @@index([userId])
+  @@index([parentCommentId])
+  @@map("candidate_comments")
+}
 
-  @@index([organizationId, status])
-  @@map("candidates")
+model CommentView {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  candidateId  Int
+  sectionKey   String   @db.VarChar(100)
+  lastViewedAt DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, candidateId, sectionKey])
+  @@index([userId, candidateId])
+  @@index([candidateId, sectionKey])
+  @@map("comment_views")
 }
 
 model Application {
@@ -1222,4 +1324,26 @@ model AuditLog {
   @@index([userId, createdAt])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// ============================================
+// STATUS CHANGE LOG (Recruitment Status Tracking)
+// ============================================
+
+model StatusChangeLog {
+  id         Int      @id @default(autoincrement())
+  entityType String   @db.VarChar(50) // 'Candidate', 'Application', 'Interview'
+  entityId   Int
+  oldStatus  String   @db.VarChar(100)
+  newStatus  String   @db.VarChar(100)
+  changedBy  Int
+  reason     String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [changedBy], references: [id], onDelete: Cascade)
+
+  @@index([entityType, entityId])
+  @@index([changedBy])
+  @@index([createdAt])
+  @@map("status_change_logs")
 }

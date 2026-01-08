@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { getOrgRolePermissions, updateOrgRolePermissions } from '@/lib/api/org/roles';
 import { OrgRole, RolePermission } from '@/lib/types/org';
 import { ORG_MODULES } from '@/lib/constants/org-modules';
+import { useOrgPermissions } from '@/lib/hooks/useOrgPermissions';
 import { Check, X, Shield } from 'lucide-react';
 
 interface ManagePermissionsDialogProps {
@@ -76,15 +77,52 @@ export function ManagePermissionsDialog({
   role,
   onSuccess,
 }: ManagePermissionsDialogProps) {
+  const { isModuleEnabled, organization, user } = useOrgPermissions();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [permissions, setPermissions] = useState<Map<string, PermissionSet>>(new Map());
+
+  // Filter modules to only show those enabled for the organization
+  const enabledModules = useMemo(() => {
+    // Super admins impersonating have access to all modules
+    if (user?.isSuperAdmin) {
+      return ORG_MODULES;
+    }
+
+    // No organization modules data means allow all (backward compatibility)
+    if (!organization?.organizationModules) {
+      return ORG_MODULES;
+    }
+
+    // Filter modules based on organization's enabled modules
+    return ORG_MODULES.filter(module => {
+      const orgModule = organization.organizationModules!.find(
+        om => om.orgModule.code === module.code
+      );
+
+      // If module not found, check if any core module exists
+      const hasCoreModules = organization.organizationModules!.some(om => om.orgModule.isCore);
+
+      if (!orgModule) {
+        return !hasCoreModules; // If core modules exist, non-listed modules are disabled
+      }
+
+      // Core modules are always enabled
+      if (orgModule.orgModule.isCore) {
+        return true;
+      }
+
+      // Non-core modules need explicit enablement
+      return orgModule.isEnabled;
+    });
+  }, [organization?.organizationModules, user?.isSuperAdmin]);
 
   useEffect(() => {
     if (open && role) {
       loadPermissions();
     }
-  }, [open, role]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, role, enabledModules]);
 
   const loadPermissions = async () => {
     try {
@@ -94,8 +132,8 @@ export function ManagePermissionsDialog({
       // Convert permissions array to Map
       const permMap = new Map<string, PermissionSet>();
 
-      // Initialize all org modules with default permissions
-      ORG_MODULES.forEach((module) => {
+      // Initialize only enabled org modules with default permissions
+      enabledModules.forEach((module) => {
         const existingPerm = data.find((p: RolePermission) => p.moduleCode === module.code);
         if (existingPerm) {
           permMap.set(module.code, {
@@ -275,7 +313,7 @@ export function ManagePermissionsDialog({
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {ORG_MODULES.map((module) => {
+                    {enabledModules.map((module) => {
                       const modulePerms = permissions.get(module.code) || DEFAULT_PERMISSIONS;
 
                       return (

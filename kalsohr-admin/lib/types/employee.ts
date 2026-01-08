@@ -438,6 +438,9 @@ export interface EmployeeFilters {
   // Filter by salary range
   salaryMin?: number;
   salaryMax?: number;
+
+  // Export specific employees
+  employeeIds?: number[];
 }
 
 /**

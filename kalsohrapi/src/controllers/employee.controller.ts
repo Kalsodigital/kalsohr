@@ -85,6 +85,7 @@ export const getAllEmployees = async (req: Request, res: Response): Promise<Resp
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
+        userId: true,
         employeeCode: true,
         firstName: true,
         middleName: true,
