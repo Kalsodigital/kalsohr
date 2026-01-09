@@ -75,7 +75,7 @@ export const tenantContext = async (
     console.log('isSuperAdmin:', req.user?.isSuperAdmin);
     console.log('X-Impersonate-Org header:', impersonateHeader);
     console.log('isImpersonating:', isImpersonating);
-    console.log('Platform role:', req.user?.role?.name);
+    console.log('Platform role ID:', req.user?.roleId);
     console.log('===============================');
 
     // Allow super admins ONLY when impersonating (support mode)

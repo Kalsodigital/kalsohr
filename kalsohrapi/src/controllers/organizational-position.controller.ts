@@ -191,7 +191,7 @@ const checkCircularHierarchy = async (
     visited.add(currentId);
 
     // Get the next level up
-    const position = await prisma.organizationalPosition.findFirst({
+    const position: { reportingPositionId: number | null } | null = await prisma.organizationalPosition.findFirst({
       where: {
         id: currentId,
         organizationId,

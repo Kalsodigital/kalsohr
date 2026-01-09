@@ -67,7 +67,7 @@ app.use('/uploads', (req, res, next) => {
     return res.sendStatus(200);
   }
 
-  next();
+  return next();
 }, express.static(path.join(__dirname, '../uploads')));
 
 // Request logging middleware (development only)

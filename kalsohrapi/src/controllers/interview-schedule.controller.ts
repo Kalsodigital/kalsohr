@@ -784,7 +784,7 @@ export const submitFeedback = async (req: Request, res: Response): Promise<Respo
       await updateApplicationFromInterview(
         existingInterview.applicationId,
         result,
-        existingInterview.roundName,
+        existingInterview.roundName || 'Interview',
         userId
       );
     }

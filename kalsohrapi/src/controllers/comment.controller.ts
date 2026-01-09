@@ -120,7 +120,7 @@ export const getCandidateComments = async (req: Request, res: Response): Promise
     }, 'Comments retrieved successfully');
   } catch (error) {
     console.error('Get candidate comments error:', error);
-    return sendError(res, MESSAGES.INTERNAL_ERROR, STATUS_CODES.INTERNAL_SERVER_ERROR);
+    return sendError(res, MESSAGES.GENERAL.ERROR, STATUS_CODES.INTERNAL_SERVER_ERROR);
   }
 };
 
@@ -224,7 +224,7 @@ export const createCandidateComment = async (req: Request, res: Response): Promi
     return sendSuccess(res, newComment, 'Comment created successfully', STATUS_CODES.CREATED);
   } catch (error) {
     console.error('Create candidate comment error:', error);
-    return sendError(res, MESSAGES.INTERNAL_ERROR, STATUS_CODES.INTERNAL_SERVER_ERROR);
+    return sendError(res, MESSAGES.GENERAL.ERROR, STATUS_CODES.INTERNAL_SERVER_ERROR);
   }
 };
 
@@ -312,7 +312,7 @@ export const updateCandidateComment = async (req: Request, res: Response): Promi
     return sendSuccess(res, updatedComment, 'Comment updated successfully');
   } catch (error) {
     console.error('Update candidate comment error:', error);
-    return sendError(res, MESSAGES.INTERNAL_ERROR, STATUS_CODES.INTERNAL_SERVER_ERROR);
+    return sendError(res, MESSAGES.GENERAL.ERROR, STATUS_CODES.INTERNAL_SERVER_ERROR);
   }
 };
 
@@ -352,7 +352,7 @@ export const deleteCandidateComment = async (req: Request, res: Response): Promi
     return sendSuccess(res, null, 'Comment deleted successfully');
   } catch (error) {
     console.error('Delete candidate comment error:', error);
-    return sendError(res, MESSAGES.INTERNAL_ERROR, STATUS_CODES.INTERNAL_SERVER_ERROR);
+    return sendError(res, MESSAGES.GENERAL.ERROR, STATUS_CODES.INTERNAL_SERVER_ERROR);
   }
 };
 
@@ -411,7 +411,7 @@ export const markCommentsAsViewed = async (req: Request, res: Response): Promise
     return sendSuccess(res, { sectionKey, markedAt: new Date() }, 'Comments marked as viewed');
   } catch (error) {
     console.error('Mark comments as viewed error:', error);
-    return sendError(res, MESSAGES.INTERNAL_ERROR, STATUS_CODES.INTERNAL_SERVER_ERROR);
+    return sendError(res, MESSAGES.GENERAL.ERROR, STATUS_CODES.INTERNAL_SERVER_ERROR);
   }
 };
 
@@ -518,6 +518,6 @@ export const getRecentComments = async (req: Request, res: Response): Promise<Re
     return sendSuccess(res, enhancedComments, 'Recent comments retrieved successfully');
   } catch (error) {
     console.error('Get recent comments error:', error);
-    return sendError(res, MESSAGES.INTERNAL_ERROR, STATUS_CODES.INTERNAL_SERVER_ERROR);
+    return sendError(res, MESSAGES.GENERAL.ERROR, STATUS_CODES.INTERNAL_SERVER_ERROR);
   }
 };
