@@ -436,7 +436,7 @@ export default function ApplicationsPage() {
       .flat()
       .find((app: any) => app.id === applicationId);
 
-    if (!application || application.status === newStatus) return;
+    if (!application || (application as any).status === newStatus) return;
 
     // Update status via API
     try {

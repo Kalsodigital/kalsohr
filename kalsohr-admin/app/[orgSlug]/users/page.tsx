@@ -95,8 +95,8 @@ export default function OrgUsersPage() {
         const data = await getOrgUsers(orgSlug, filters);
         setUsers(data.users);
         setPagination(data.pagination);
-        if (data.subscriptionInfo) {
-          setSubscriptionInfo(data.subscriptionInfo);
+        if ((data as any).subscriptionInfo) {
+          setSubscriptionInfo((data as any).subscriptionInfo);
         }
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Failed to load users');
@@ -194,7 +194,7 @@ export default function OrgUsersPage() {
                 <span>
                   <Button
                     onClick={() => setIsCreateDialogOpen(true)}
-                    disabled={subscriptionInfo && !subscriptionInfo.canAddMore}
+                    disabled={!!(subscriptionInfo && !subscriptionInfo.canAddMore)}
                     className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Plus className="w-4 h-4 mr-2" />

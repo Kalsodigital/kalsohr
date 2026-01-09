@@ -310,6 +310,7 @@ export default function SubscriptionPlansPage() {
                             {plan.name}
                           </CardTitle>
                           <AuditHoverIcon
+                            moduleCode="subscription_plans"
                             createdAt={plan.createdAt}
                             createdBy={plan.createdBy}
                             creator={plan.creator}

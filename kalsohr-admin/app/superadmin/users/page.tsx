@@ -338,7 +338,7 @@ export default function UsersPage() {
                               createdAt={user.createdAt}
                               createdBy={user.createdBy}
                               creator={user.creator}
-                              updatedAt={user.updatedAt}
+                              updatedAt={user.updatedAt || user.createdAt}
                               updatedBy={user.updatedBy}
                               updater={user.updater}
                             />

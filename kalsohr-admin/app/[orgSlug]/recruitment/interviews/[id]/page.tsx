@@ -175,7 +175,6 @@ export default function InterviewDetailPage() {
         feedback: feedbackForm.feedback,
         rating: feedbackForm.rating,
         result: feedbackForm.result,
-        notes: feedbackForm.notes || undefined,
       });
 
       toast.success('Feedback submitted successfully');

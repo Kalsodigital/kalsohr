@@ -640,6 +640,7 @@ export default function CandidatesPage() {
                       <div className="flex items-center justify-end gap-2">
                         {candidate.createdBy && (
                           <AuditHoverIcon
+                            moduleCode="recruitment"
                             createdBy={candidate.createdBy}
                             creator={candidate.creator}
                             updatedBy={candidate.updatedBy}

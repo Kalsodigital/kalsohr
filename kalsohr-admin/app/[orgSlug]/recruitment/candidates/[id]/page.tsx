@@ -166,8 +166,8 @@ export default function CandidateProfilePage() {
   };
 
   const handleDownloadResume = () => {
-    if (candidate?.resumePath) {
-      const resumeUrl = getImageUrl(candidate.resumePath);
+    if ((candidate as any)?.resumePath) {
+      const resumeUrl = getImageUrl((candidate as any).resumePath);
       window.open(resumeUrl, '_blank');
     }
   };
@@ -232,7 +232,7 @@ export default function CandidateProfilePage() {
             </p>
           </div>
           <div className="flex gap-2">
-            {candidate.resumePath && (
+            {(candidate as any).resumePath && (
               <Button
                 onClick={handleDownloadResume}
                 variant="outline"
@@ -318,7 +318,7 @@ export default function CandidateProfilePage() {
                     </div>
                     <div>
                       <span className="text-xs text-gray-400 block">Applied</span>
-                      <span className="font-medium">{formatDate(candidate.createdAt)}</span>
+                      <span className="font-medium">{formatDate(candidate.createdAt as any)}</span>
                     </div>
                   </div>
                 )}
@@ -357,7 +357,6 @@ export default function CandidateProfilePage() {
                         sectionKey={SECTION_KEYS.QUICK_INFO}
                         sectionLabel="Quick Information"
                         commentCount={commentCounts[SECTION_KEYS.QUICK_INFO] || 0}
-                        unreadCount={unreadCounts[SECTION_KEYS.QUICK_INFO] || 0}
                         unreadCount={unreadCounts[SECTION_KEYS.QUICK_INFO] || 0}
                         orgSlug={orgSlug}
                         onCommentAdded={loadCommentCounts}
@@ -447,7 +446,7 @@ export default function CandidateProfilePage() {
                       icon={<MapPin className="w-5 h-5 text-red-600" />}
                       iconBg="bg-red-50 group-hover:bg-red-100"
                       label="City"
-                      value={candidate.cityMaster ? `${candidate.cityMaster.name}, ${candidate.cityMaster.state?.name}` : '-'}
+                      value={(candidate as any).cityMaster ? `${(candidate as any).cityMaster.name}, ${(candidate as any).cityMaster.state?.name}` : '-'}
                     />
                   </CardContent>
                 </Card>
@@ -484,7 +483,7 @@ export default function CandidateProfilePage() {
                       icon={<Calendar className="w-5 h-5 text-purple-600" />}
                       iconBg="bg-purple-50 group-hover:bg-purple-100"
                       label="Applied On"
-                      value={formatDate(candidate.createdAt)}
+                      value={formatDate(candidate.createdAt as any)}
                     />
                     {candidate.referredBy && (
                       <InfoRow
@@ -623,7 +622,7 @@ export default function CandidateProfilePage() {
                       icon={<BookOpen className="w-5 h-5 text-blue-600" />}
                       iconBg="bg-blue-50"
                       label="Education Level"
-                      value={candidate.educationLevelMaster?.name || candidate.educationLevel || '-'}
+                      value={(candidate as any).educationLevelMaster?.name || candidate.educationLevel || '-'}
                     />
                     {candidate.qualifications && (
                       <div>
@@ -692,19 +691,19 @@ export default function CandidateProfilePage() {
                       icon={<Calendar className="w-5 h-5 text-purple-600" />}
                       iconBg="bg-purple-50"
                       label="Date of Birth"
-                      value={formatDate(candidate.dateOfBirth)}
+                      value={formatDate(candidate.dateOfBirth as any)}
                     />
                     <InfoRow
                       icon={<User className="w-5 h-5 text-blue-600" />}
                       iconBg="bg-blue-50"
                       label="Gender"
-                      value={candidate.genderMaster?.name || '-'}
+                      value={(candidate as any).genderMaster?.name || '-'}
                     />
                     <InfoRow
                       icon={<Users className="w-5 h-5 text-green-600" />}
                       iconBg="bg-green-50"
                       label="Marital Status"
-                      value={candidate.maritalStatusMaster?.name || '-'}
+                      value={(candidate as any).maritalStatusMaster?.name || '-'}
                     />
                   </CardContent>
                 </Card>
@@ -741,12 +740,12 @@ export default function CandidateProfilePage() {
                         <p className="text-gray-900">{candidate.permanentAddress}</p>
                       </div>
                     )}
-                    {candidate.cityMaster && (
+                    {(candidate as any).cityMaster && (
                       <InfoRow
                         icon={<MapPin className="w-5 h-5 text-red-600" />}
                         iconBg="bg-red-50"
                         label="City"
-                        value={`${candidate.cityMaster.name}, ${candidate.cityMaster.state?.name}, ${candidate.cityMaster.state?.country?.name}`}
+                        value={`${(candidate as any).cityMaster.name}, ${(candidate as any).cityMaster.state?.name}, ${(candidate as any).cityMaster.state?.country?.name}`}
                       />
                     )}
                     {candidate.postalCode && (

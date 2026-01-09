@@ -207,7 +207,7 @@ export default function RolesPage() {
                         createdAt={role.createdAt}
                         createdBy={role.createdBy}
                         creator={role.creator}
-                        updatedAt={role.updatedAt}
+                        updatedAt={role.updatedAt || role.createdAt}
                         updatedBy={role.updatedBy}
                         updater={role.updater}
                       />

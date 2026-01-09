@@ -163,7 +163,7 @@ export default function InterviewsPage() {
       if (!canRead) return;
 
       try {
-        const positions = await getAllJobPositions(orgSlug, true);
+        const positions = await getAllJobPositions(orgSlug, {});
         setJobPositions(positions);
       } catch (error) {
         console.error('Failed to load job positions:', error);

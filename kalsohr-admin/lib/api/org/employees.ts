@@ -134,7 +134,7 @@ export const createEmployee = async (
       throw new Error(response.data.message);
     }
 
-    return response.data.data;
+    return response.data.data.employee;
   } catch (error) {
     throw new Error(handleApiError(error));
   }
